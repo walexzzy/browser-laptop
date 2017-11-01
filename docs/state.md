@@ -175,6 +175,10 @@ AppStore
     }
   },
   ledger: {
+    about: {
+      synopsis: Array.Object,
+      synopsisOptions: Object
+    },
     info: {
       address: string, // the BTC wallet address (in base58)
       amount: number, // fiat amount to contribute per reconciliation period
@@ -254,7 +258,7 @@ AppStore
       publishers: {
         [publisherId]: {
           duration: number,
-          faviconUrl: string,
+          faviconURL: string,
           options: {
             exclude: boolean,
             verified: boolean,

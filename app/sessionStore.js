@@ -36,6 +36,7 @@ const {defaultSiteSettingsList} = require('../js/data/siteSettingsList')
 const filtering = require('./filtering')
 const autofill = require('./autofill')
 const {navigatableTypes} = require('../js/lib/appUrlUtil')
+const {isDataUrl, parseFaviconDataUrl} = require('../js/lib/urlUtil')
 const Channel = require('./channel')
 const {isImmutable, makeImmutable, deleteImmutablePaths} = require('./common/state/immutableUtil')
 const {getSetting} = require('../js/settings')
@@ -53,8 +54,8 @@ const getTempStoragePath = (filename) => {
     : path.join(process.env.HOME, '.brave-test-session-store-' + filename + '-' + epochTimestamp)
 }
 
-const getStoragePath = () => {
-  return path.join(app.getPath('userData'), sessionStorageName)
+const getStoragePath = (filename = sessionStorageName) => {
+  return path.join(app.getPath('userData'), filename)
 }
 /**
  * Saves the specified immutable browser state to storage.
@@ -419,13 +420,24 @@ module.exports.cleanAppData = (immutableData, isShutdown) => {
     })
   }
 
-  // Leader cleanup
+  // Ledger cleanup
   if (immutableData.has('pageData')) {
     immutableData = immutableData.delete('pageData')
   }
 
   if (immutableData.hasIn(['ledger', 'locations'])) {
     immutableData = immutableData.deleteIn(['ledger', 'locations'])
+  }
+
+  try {
+    const basePath = getStoragePath('ledger-favicons')
+    const fs = require('fs')
+    if (!fs.existsSync(basePath)) {
+      fs.mkdirSync(basePath)
+    }
+    immutableData = cleanFavicons(basePath, immutableData)
+  } catch (e) {
+    console.error('cleanAppData: error cleaning up data: urls', e)
   }
 
   return immutableData
@@ -445,6 +457,42 @@ module.exports.cleanSessionDataOnShutdown = () => {
   if (getSetting(settings.SHUTDOWN_CLEAR_HISTORY) === true) {
     filtering.clearHistory()
   }
+}
+
+const cleanFavicons = (basePath, immutableData) => {
+  const fs = require('fs')
+  const synopsisPaths = [
+    ['ledger', 'synopsis', 'publishers'],
+    ['ledger', 'about', 'synopsis']
+  ]
+  synopsisPaths.forEach((synopsisPath) => {
+    if (immutableData.getIn(synopsisPath)) {
+      immutableData.getIn(synopsisPath).forEach((value, index) => {
+        // Fix #11582
+        if (value && value.get && isDataUrl(value.get('faviconURL', ''))) {
+          const parsed = parseFaviconDataUrl(value.get('faviconURL'))
+          if (!parsed) {
+            immutableData = immutableData.setIn(
+              synopsisPath.concat([index, 'faviconURL']), '')
+            return
+          }
+          const faviconPath = path.join(basePath,
+            typeof index === 'number'
+              ? `favicon-${index}-${Date.now()}.${parsed.ext}`
+              : `favicon-${index}.${parsed.ext}`
+          )
+          fs.writeFile(faviconPath, parsed.data, 'base64', (err) => {
+            if (err) {
+              console.error(`Error writing file: ${faviconPath} ${err}`)
+            }
+          })
+          immutableData = immutableData.setIn(
+            synopsisPath.concat([index, 'faviconURL']), `file://${faviconPath}`)
+        }
+      })
+    }
+  })
+  return immutableData
 }
 
 const safeGetVersion = (fieldName, getFieldVersion) => {
