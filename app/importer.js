@@ -60,11 +60,8 @@ exports.importHTML = (selected) => {
   const state = appStore.getState()
   hasBookmarks = bookmarksState.getBookmarks(state).size > 0 || bookmarkFoldersState.getFolders(state).size > 0
   const files = dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters: [{
-      name: 'HTML',
-      extensions: ['html', 'htm']
-    }]
+    type: 'select-open-file',
+    extensions: ['html', 'htm']
   })
   if (files && files.length > 0) {
     const file = files[0]

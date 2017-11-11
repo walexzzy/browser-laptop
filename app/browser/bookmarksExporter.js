@@ -36,10 +36,8 @@ const showDialog = (state) => {
 
   dialog.showSaveDialog(focusedWindow, {
     defaultPath: defaultPath,
-    filters: [{
-      name: 'HTML',
-      extensions: ['html']
-    }]
+    type: 'select-saveas-file',
+    extensions: ['html']
   }, (fileName) => {
     if (fileName) {
       personal = createBookmarkArray(state)

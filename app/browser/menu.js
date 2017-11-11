@@ -58,7 +58,7 @@ const createFileSubmenu = () => {
       accelerator: 'CmdOrCtrl+O',
       click: (item, focusedWindow) => {
         dialog.showOpenDialog(focusedWindow, {
-          properties: ['openFile', 'multiSelections']
+          type: 'select-open-multi-file'
         }, (paths) => {
           if (paths) {
             paths.forEach((path) => {
